@@ -28,17 +28,20 @@ pip install -r backend/requirements.txt
 # 3) 세션키 설정 (선택 — 안 하면 서버 재시작 때 로그인이 풀립니다)
 python -c "import secrets; print('SECRET_KEY=' + secrets.token_hex(32))" > .env
 
-# 4) 실행
+# 4) 실행 (개발용)
 cd backend && python app.py
 #   → 브라우저에서 http://127.0.0.1:5000
 ```
+
+인터넷에 공개하려면(다른 사람도 접속) → `📘배포_안내서.md` 참고. 내 PC + Cloudflare Tunnel로 도메인·포트개방 없이 무료로 공개할 수 있습니다.
 
 ## 폴더 구조
 
 ```
 팀비밀금고/
 ├─ backend/                  # Flask 서버 (API + 화면 서빙)
-│  ├─ app.py                 # 진입점
+│  ├─ app.py                 # 개발용 진입점
+│  ├─ 서버실행.py             # 배포용 진입점(waitress)
 │  ├─ config.py  db.py  schema.sql
 │  └─ routes/ 인증.py  시크릿.py  공유.py
 ├─ frontend/                 # 화면과 암호화 로직
@@ -47,6 +50,7 @@ cd backend && python app.py
 │  └─ js/ 암호.js  api.js  앱.js
 ├─ 공유암호화_증거테스트.mjs   # 동작 확인용 스크립트
 ├─ 복구키_증거테스트.mjs
+├─ 📘배포_안내서.md
 └─ README.md
 ```
 
@@ -58,6 +62,6 @@ cd backend && python app.py
 
 ## 참고
 
-- 로컬(`127.0.0.1`)에서 실행하는 실습용입니다. 인터넷에 배포하려면 HTTPS가 필요합니다.
+- 로컬(`127.0.0.1`)에서 바로 실행할 수 있고, 인터넷 공개도 가능합니다(`📘배포_안내서.md`). 암호화 특성상 접속은 HTTPS 또는 localhost에서만 정상 동작합니다.
 - 제목은 암호화하지 않고 그대로 저장되므로 제목에 민감한 정보를 넣지 마세요.
 - 마스터 비밀번호와 복구 키를 모두 잃으면 저장한 내용을 되살릴 수 없습니다.
