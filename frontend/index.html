@@ -23,6 +23,7 @@
         <input id="로그인-비번" type="password" placeholder="마스터 비밀번호" autocomplete="current-password">
         <button type="submit">로그인</button>
       </form>
+      <p class="주의"><a href="#" id="복구링크">비밀번호를 잊으셨나요? → 복구 키로 재설정</a></p>
     </section>
 
     <section class="카드">
@@ -32,15 +33,45 @@
         <input id="가입-비번" type="password" placeholder="마스터 비밀번호" autocomplete="new-password">
         <button type="submit">가입</button>
       </form>
-      <p class="주의">⚠️ 마스터 비밀번호를 잊으면 <b>복구할 수 없습니다</b>(제로지식).</p>
+      <p class="주의">⚠️ 마스터 비밀번호를 잊으면 <b>복구 키로만</b> 되살릴 수 있습니다. 가입 시 발급되는 복구 키를 안전하게 보관하세요.</p>
     </section>
   </main>
+
+  <!-- 복구 화면 -->
+  <main id="복구화면" class="hidden">
+    <section class="카드">
+      <h2>복구 키로 비밀번호 재설정</h2>
+      <form id="복구폼">
+        <input id="복구-이름" type="text" placeholder="사용자명" autocomplete="username">
+        <textarea id="복구-키" rows="2" placeholder="복구 키 (XXXX-XXXX-... 형식)"></textarea>
+        <input id="복구-새비번" type="password" placeholder="새 마스터 비밀번호" autocomplete="new-password">
+        <button type="submit">복구하고 새 비밀번호 설정</button>
+      </form>
+      <p class="주의"><a href="#" id="복구취소">← 로그인으로 돌아가기</a></p>
+    </section>
+  </main>
+
+  <!-- 복구 키 표시 모달 -->
+  <div id="복구키모달" class="모달덮개 hidden">
+    <div class="모달">
+      <h2>🔑 복구 키가 발급되었습니다</h2>
+      <p>마스터 비밀번호를 잊었을 때 이 키로만 금고를 되살릴 수 있습니다.</p>
+      <div id="복구키값" class="복구키표시"></div>
+      <button id="복구키복사" class="보조">복사</button>
+      <p class="주의">⚠️ 이 키는 <b>다시 표시되지 않습니다</b>. 종이나 비밀번호 관리자에 안전하게 보관하세요. 복구 키는 마스터 비밀번호만큼 중요합니다.</p>
+      <label class="확인체크"><input type="checkbox" id="복구키확인"> 안전한 곳에 보관했습니다</label>
+      <button id="복구키닫기" disabled>확인</button>
+    </div>
+  </div>
 
   <!-- 금고 화면 -->
   <main id="금고화면" class="hidden">
     <div class="상단바">
       <span><b id="현재사용자"></b> 님의 금고</span>
-      <button id="로그아웃" class="보조">로그아웃</button>
+      <div>
+        <button id="복구키재발급" class="보조">복구 키 재발급</button>
+        <button id="로그아웃" class="보조">로그아웃</button>
+      </div>
     </div>
 
     <section class="카드">

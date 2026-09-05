@@ -6,6 +6,11 @@ CREATE TABLE IF NOT EXISTS users (
     public_key  TEXT NOT NULL,          -- base64 SPKI, RSA 공개키
     enc_priv    TEXT NOT NULL,          -- base64, vaultKey로 암호화된 개인키
     enc_priv_iv TEXT NOT NULL,          -- base64, 개인키 암호화 IV
+    -- 복구 키(Recovery Key) 관련. NULL이면 복구 키 미설정 계정(마이그레이션 대상).
+    recovery_salt         TEXT,          -- base64, 복구키 KDF용
+    recovery_hash         TEXT,          -- bcrypt(recoveryAuthKey), 복구 요청 인가용
+    enc_priv_recovery     TEXT,          -- base64, recoveryWrapKey로 봉인한 개인키(두 번째 사본)
+    enc_priv_recovery_iv  TEXT,          -- base64, 그 봉인의 IV
     created_at  TEXT NOT NULL
 );
 

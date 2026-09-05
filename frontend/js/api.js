@@ -23,4 +23,9 @@ window.api = {
   deleteSecret: (id) => jsonFetch(`/api/secrets/${id}`, { method: "DELETE" }),
   getPublicKey: (username) => jsonFetch(`/api/users/${encodeURIComponent(username)}/publickey`),
   share: (id, body) => jsonFetch(`/api/secrets/${id}/share`, { method: "POST", body: JSON.stringify(body) }),
+  // 복구 키
+  getRecoverySalt: (username) => jsonFetch(`/api/recovery-salt?username=${encodeURIComponent(username)}`),
+  getRecoveryPriv: (body) => jsonFetch("/api/recovery-priv", { method: "POST", body: JSON.stringify(body) }),
+  recover: (body) => jsonFetch("/api/recover", { method: "POST", body: JSON.stringify(body) }),
+  resetRecoveryKey: (body) => jsonFetch("/api/recovery-key/reset", { method: "POST", body: JSON.stringify(body) }),
 };

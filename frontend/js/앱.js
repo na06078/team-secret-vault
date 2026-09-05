@@ -28,12 +28,20 @@ async function 회원가입(e) {
     const { publicKeyB64, privateKey } = await 암호.generateRSAKeyPair();
     const { encPrivB64, ivB64 } = await 암호.wrapPrivateKey(privateKey, vaultKey);
 
+    // 복구 키 발급 → 개인키를 복구 키로 한 벌 더 봉인
+    const { display: 복구키표시, keyBytes } = 암호.generateRecoveryKey();
+    const recoverySaltB64 = 암호.randomSaltB64();
+    const { recoveryAuthKey, recoveryWrapKey } = await 암호.deriveRecoveryKeys(keyBytes, recoverySaltB64);
+    const rec = await 암호.wrapPrivateKey(privateKey, recoveryWrapKey);
+
     await api.register({
       username, salt: saltB64, authKey,
       public_key: publicKeyB64, enc_priv: encPrivB64, enc_priv_iv: ivB64,
+      recovery_salt: recoverySaltB64, recovery_auth_key: recoveryAuthKey,
+      enc_priv_recovery: rec.encPrivB64, enc_priv_recovery_iv: rec.ivB64,
     });
-    알림("가입 완료! 이제 로그인하세요.");
     $("#가입-이름").value = ""; $("#가입-비번").value = "";
+    복구키모달표시(복구키표시, "가입 완료! 아래 복구 키를 보관하세요.");
   } catch (err) {
     알림(err.message, true);
   }
@@ -172,6 +180,70 @@ async function 시크릿추가(e) {
   }
 }
 
+// ---------- 복구 키 모달 ----------
+function 복구키모달표시(복구키, 안내메시지) {
+  $("#복구키값").textContent = 복구키;
+  $("#복구키확인").checked = false;
+  $("#복구키닫기").disabled = true;
+  $("#복구키모달").classList.remove("hidden");
+  if (안내메시지) 알림(안내메시지);
+}
+
+// ---------- 계정 복구(비번 재설정) ----------
+async function 복구실행(e) {
+  e.preventDefault();
+  const username = $("#복구-이름").value.trim();
+  const 복구키 = $("#복구-키").value.trim();
+  const 새비번 = $("#복구-새비번").value;
+  if (!username || !복구키 || !새비번) return 알림("모든 칸을 입력하세요.", true);
+
+  try {
+    // 1) 복구용 salt → 복구 키 2갈래 유도
+    const { recovery_salt } = await api.getRecoverySalt(username);
+    const { recoveryAuthKey, recoveryWrapKey } = await 암호.deriveRecoveryKeys(복구키, recovery_salt);
+
+    // 2) 검증 통과 시 개인키 복구 사본(암호문) 수령 → 복호화
+    const { enc_priv_recovery, enc_priv_recovery_iv } =
+      await api.getRecoveryPriv({ username, recovery_auth_key: recoveryAuthKey });
+    const privateKey = await 암호.unwrapPrivateKey(enc_priv_recovery, enc_priv_recovery_iv, recoveryWrapKey);
+
+    // 3) 새 비번으로 개인키 재봉인 → 서버 갱신
+    const newSalt = 암호.randomSaltB64();
+    const { authKey: newAuthKey, vaultKey: newVaultKey } = await 암호.deriveKeys(새비번, newSalt);
+    const { encPrivB64, ivB64 } = await 암호.wrapPrivateKey(privateKey, newVaultKey);
+    await api.recover({
+      username, recovery_auth_key: recoveryAuthKey,
+      new_salt: newSalt, new_auth_key: newAuthKey,
+      new_enc_priv: encPrivB64, new_enc_priv_iv: ivB64,
+    });
+
+    $("#복구-이름").value = ""; $("#복구-키").value = ""; $("#복구-새비번").value = "";
+    hide("#복구화면"); show("#인증화면");
+    알림("복구 완료! 새 비밀번호로 로그인하세요.");
+  } catch (err) {
+    알림("복구 실패: " + err.message, true);
+  }
+}
+
+// ---------- 복구 키 재발급 (로그인 상태) ----------
+async function 복구키재발급() {
+  if (!개인키) return 알림("로그인 상태가 아닙니다.", true);
+  if (!confirm("새 복구 키를 발급하면 이전 복구 키는 무효화됩니다. 계속할까요?")) return;
+  try {
+    const { display: 복구키표시, keyBytes } = 암호.generateRecoveryKey();
+    const recoverySaltB64 = 암호.randomSaltB64();
+    const { recoveryAuthKey, recoveryWrapKey } = await 암호.deriveRecoveryKeys(keyBytes, recoverySaltB64);
+    const rec = await 암호.wrapPrivateKey(개인키, recoveryWrapKey);
+    await api.resetRecoveryKey({
+      recovery_salt: recoverySaltB64, recovery_auth_key: recoveryAuthKey,
+      enc_priv_recovery: rec.encPrivB64, enc_priv_recovery_iv: rec.ivB64,
+    });
+    복구키모달표시(복구키표시, "새 복구 키가 발급되었습니다.");
+  } catch (err) {
+    알림(err.message, true);
+  }
+}
+
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -183,6 +255,18 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#로그아웃").addEventListener("click", 로그아웃);
   $("#추가폼").addEventListener("submit", 시크릿추가);
   $("#시크릿목록").addEventListener("click", 목록클릭);
+
+  // 복구 키 관련
+  $("#복구링크").addEventListener("click", (e) => { e.preventDefault(); hide("#인증화면"); show("#복구화면"); });
+  $("#복구취소").addEventListener("click", (e) => { e.preventDefault(); hide("#복구화면"); show("#인증화면"); });
+  $("#복구폼").addEventListener("submit", 복구실행);
+  $("#복구키재발급").addEventListener("click", 복구키재발급);
+  $("#복구키확인").addEventListener("change", (e) => { $("#복구키닫기").disabled = !e.target.checked; });
+  $("#복구키닫기").addEventListener("click", () => { $("#복구키모달").classList.add("hidden"); });
+  $("#복구키복사").addEventListener("click", async () => {
+    await navigator.clipboard.writeText($("#복구키값").textContent);
+    알림("복구 키를 복사했습니다.");
+  });
 
   if (!window.crypto || !window.crypto.subtle) {
     알림("이 브라우저는 WebCrypto를 지원하지 않거나 보안 컨텍스트(localhost/https)가 아닙니다.", true);

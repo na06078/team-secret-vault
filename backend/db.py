@@ -22,5 +22,21 @@ def init_db() -> None:
     try:
         conn.executescript(sql)
         conn.commit()
+        _migrate(conn)
     finally:
         conn.close()
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """기존 DB에 복구 키 컬럼이 없으면 추가한다(무손실 마이그레이션)."""
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+    add = {
+        "recovery_salt": "TEXT",
+        "recovery_hash": "TEXT",
+        "enc_priv_recovery": "TEXT",
+        "enc_priv_recovery_iv": "TEXT",
+    }
+    for name, typ in add.items():
+        if name not in cols:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {name} {typ}")
+    conn.commit()

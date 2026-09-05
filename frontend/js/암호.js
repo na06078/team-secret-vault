@@ -124,8 +124,61 @@ async function rewrapForUser(wrappedKeyB64, myPrivateKey, targetPublicKeyB64) {
   return bufToB64(rewrapped);
 }
 
+// ---------- 복구 키(Recovery Key) ----------
+// Base32 알파벳(사람이 읽기 쉽게 헷갈리는 0/O/1/I 제외 — Crockford 계열)
+const B32_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ0123456789"; // 32자
+function bytesToBase32(bytes) {
+  let bits = 0, value = 0, out = "";
+  for (const b of bytes) {
+    value = (value << 8) | b; bits += 8;
+    while (bits >= 5) { out += B32_ALPHABET[(value >>> (bits - 5)) & 31]; bits -= 5; }
+  }
+  if (bits > 0) out += B32_ALPHABET[(value << (5 - bits)) & 31];
+  return out;
+}
+function base32ToBytes(str) {
+  const clean = str.toUpperCase().replace(/[^A-Z0-9]/g, "")
+    .replace(/O/g, "0").replace(/I/g, "1").replace(/L/g, "1").replace(/U/g, "V");
+  let bits = 0, value = 0; const out = [];
+  for (const ch of clean) {
+    const idx = B32_ALPHABET.indexOf(ch);
+    if (idx < 0) continue;
+    value = (value << 5) | idx; bits += 5;
+    if (bits >= 8) { out.push((value >>> (bits - 8)) & 0xff); bits -= 8; }
+  }
+  return new Uint8Array(out);
+}
+
+// 복구 키 생성: 160비트(20B) 무작위 → Base32 32자 → 4자씩 8그룹 하이픈 연결
+// 반환: { display: "XXXX-XXXX-...(8그룹)", keyBytes: Uint8Array(20) }
+function generateRecoveryKey() {
+  const keyBytes = crypto.getRandomValues(new Uint8Array(20));
+  const b32 = bytesToBase32(keyBytes); // 32자
+  const display = (b32.match(/.{1,4}/g) || []).join("-");
+  return { display, keyBytes };
+}
+
+// 복구 키(표시 문자열 또는 바이트) → 2갈래 유도 (deriveKeys와 대칭)
+// 반환: { recoveryAuthKey(base64), recoveryWrapKey(CryptoKey) }
+async function deriveRecoveryKeys(recoveryKeyInput, recoverySaltB64) {
+  const keyBytes = (recoveryKeyInput instanceof Uint8Array)
+    ? recoveryKeyInput : base32ToBytes(String(recoveryKeyInput));
+  const salt = new Uint8Array(b64ToBuf(recoverySaltB64));
+  const baseKey = await crypto.subtle.importKey("raw", keyBytes, "PBKDF2", false, ["deriveBits", "deriveKey"]);
+  const authBits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: concatBytes(salt, enc.encode("rec-auth")), iterations: PBKDF2_ITER, hash: "SHA-256" },
+    baseKey, 256
+  );
+  const recoveryWrapKey = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: concatBytes(salt, enc.encode("rec-wrap")), iterations: PBKDF2_ITER, hash: "SHA-256" },
+    baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+  );
+  return { recoveryAuthKey: bufToB64(authBits), recoveryWrapKey };
+}
+
 window.암호 = {
   randomSaltB64, deriveKeys, generateRSAKeyPair,
   wrapPrivateKey, unwrapPrivateKey,
   encryptSecret, decryptSecret, rewrapForUser,
+  generateRecoveryKey, deriveRecoveryKeys,
 };
