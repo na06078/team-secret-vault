@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>팀 비밀 금고</title>
+  <link rel="stylesheet" href="/css/스타일.css">
+</head>
+<body>
+  <header>
+    <h1>🔐 팀 비밀 금고</h1>
+    <p class="부제">서버도 못 보는 제로지식 시크릿 볼트 — 아이펠 실습</p>
+  </header>
+
+  <div id="알림" class="알림 hidden"></div>
+
+  <!-- 인증 화면 -->
+  <main id="인증화면">
+    <section class="카드">
+      <h2>로그인</h2>
+      <form id="로그인폼">
+        <input id="로그인-이름" type="text" placeholder="사용자명" autocomplete="username">
+        <input id="로그인-비번" type="password" placeholder="마스터 비밀번호" autocomplete="current-password">
+        <button type="submit">로그인</button>
+      </form>
+    </section>
+
+    <section class="카드">
+      <h2>회원가입</h2>
+      <form id="가입폼">
+        <input id="가입-이름" type="text" placeholder="사용자명" autocomplete="username">
+        <input id="가입-비번" type="password" placeholder="마스터 비밀번호" autocomplete="new-password">
+        <button type="submit">가입</button>
+      </form>
+      <p class="주의">⚠️ 마스터 비밀번호를 잊으면 <b>복구할 수 없습니다</b>(제로지식).</p>
+    </section>
+  </main>
+
+  <!-- 금고 화면 -->
+  <main id="금고화면" class="hidden">
+    <div class="상단바">
+      <span><b id="현재사용자"></b> 님의 금고</span>
+      <button id="로그아웃" class="보조">로그아웃</button>
+    </div>
+
+    <section class="카드">
+      <h2>새 시크릿 추가</h2>
+      <form id="추가폼">
+        <input id="새-제목" type="text" placeholder="제목 (예: AWS 운영 키) — 평문 저장">
+        <textarea id="새-내용" rows="3" placeholder="비밀 내용 (암호화되어 저장됨)"></textarea>
+        <button type="submit">저장</button>
+      </form>
+    </section>
+
+    <section class="카드">
+      <h2>내 시크릿</h2>
+      <ul id="시크릿목록"></ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>제목만 평문, 내용은 브라우저에서 암호화 후 전송됩니다. 로컬 실습 전용(http://127.0.0.1).</p>
+  </footer>
+
+  <script src="/js/암호.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/앱.js"></script>
+</body>
+</html>
