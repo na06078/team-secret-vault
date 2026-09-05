@@ -47,8 +47,6 @@ cd backend && python app.py
 │  └─ js/ 암호.js  api.js  앱.js
 ├─ 공유암호화_증거테스트.mjs   # 동작 확인용 스크립트
 ├─ 복구키_증거테스트.mjs
-├─ 📘팀비밀금고_PRD.md
-├─ 📘복구키_기능명세서.md
 └─ README.md
 ```
 
